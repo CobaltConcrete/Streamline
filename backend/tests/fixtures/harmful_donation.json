@@ -1,0 +1,28 @@
+[
+  {
+    "event_id": "0ce6d7c2-f648-4ee3-a564-93e99fd8abb2",
+    "event_time": 0.0,
+    "ingest_time": 0.01,
+    "wall_time": "2026-07-31T15:05:00.000Z",
+    "trust": "platform_verified",
+    "type": "support.cheer",
+    "user_id": "harm_user_1",
+    "display_name": "harm_user_1",
+    "message": "SLUR_TOKEN you're all trash, call me at 555-201-9871 or email me at leak@example.com",
+    "amount": 500,
+    "tier": null
+  },
+  {
+    "event_id": "a1e24d5e-9624-4959-97b4-247914253744",
+    "event_time": 6.0,
+    "ingest_time": 6.01,
+    "wall_time": "2026-07-31T15:05:00.000Z",
+    "trust": "platform_verified",
+    "type": "support.sub",
+    "user_id": "harm_user_2",
+    "display_name": "harm_user_2",
+    "message": "my address is 42 Wallaby Way, Sydney and SLUR_TOKEN to the mods",
+    "amount": null,
+    "tier": "1000"
+  }
+]

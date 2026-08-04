@@ -1,0 +1,26 @@
+obs:
+  host: "127.0.0.1"
+  port: 4455
+  # password read from OS keyring, never from this file
+twitch:
+  channel: "your_channel"
+  # overridden by TWITCH_CHANNEL; token comes from .env or the OS keyring
+asr:
+  provider: parakeet
+  model: "nvidia/parakeet-unified-en-0.6b"
+  device: cuda # cpu is not a supported configuration
+  streaming_latency_ms: 160
+  sample_rate: 16000
+  min_free_vram_mb: 2500 # preflight gate, see R-ASR-04
+reasoning:
+  provider: auto
+  endpoint: ""
+  model: ""
+  timeout_s: 3.0
+pipeline:
+  micro_batch_ms: 1500
+  rolling_window_s: 90
+  decision_ttl_s: 20
+autonomy:
+  startup_level: OBSERVE
+environment: development

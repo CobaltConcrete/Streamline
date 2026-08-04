@@ -1,0 +1,59 @@
+version: 1
+actions:
+  - id: show_question_overlay
+    type: overlay_text # overlay_text | scene_switch | item_visibility | filter_toggle
+    risk: low
+    target:
+      input_name: "AI_Question_Text" # exact OBS input name, resolved at startup
+    limits:
+      max_length: 120
+      duration_ms: 8000
+      cooldown_s: 45
+      max_per_session: 30
+    reversible: true
+
+  - id: show_support_overlay
+    type: overlay_text
+    risk: low
+    target:
+      input_name: "AI_Support_Text"
+    limits:
+      max_length: 120
+      duration_ms: 6000
+      cooldown_s: 20
+      max_per_session: 50
+    reversible: true
+
+  - id: toggle_camera_frame
+    type: item_visibility
+    risk: low
+    target:
+      scene_name: "Gameplay"
+      item_name: "CameraFrame"
+    limits:
+      cooldown_s: 30
+      max_per_session: 40
+    reversible: true
+
+  - id: trigger_hype_filter
+    type: filter_toggle
+    risk: low
+    target:
+      source_name: "CameraFrame"
+      filter_name: "HypeGlow"
+    limits:
+      duration_ms: 4000
+      cooldown_s: 60
+      max_per_session: 15
+    reversible: true
+
+  - id: switch_to_break_scene
+    type: scene_switch
+    risk: medium
+    target:
+      scene_name: "BRB"
+    limits:
+      cooldown_s: 300
+      max_per_session: 4
+    reversible: true
+    requires_confirmation: true

@@ -3,6 +3,9 @@ __pycache__/
 *.py[codz]
 *$py.class
 
+# Node / frontend
+node_modules/
+
 # C extensions
 *.so
 
@@ -149,6 +152,8 @@ activemq-data/
 
 # Environments
 .env
+.env.*
+!.env.example
 .envrc
 .venv
 env/

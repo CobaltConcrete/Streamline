@@ -1,0 +1,14 @@
+body {
+  margin: 0;
+  background: transparent;
+  font-family: sans-serif;
+}
+
+#overlay-text {
+  max-width: 90vw;
+  padding: 1rem;
+  color: white;
+  font-size: 2rem;
+  overflow-wrap: anywhere;
+  text-shadow: 0 0 6px rgb(0 0 0 / 85%);
+}

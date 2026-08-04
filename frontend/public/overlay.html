@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- R-SAF-06: only local static assets and the local overlay socket. -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; style-src 'self'; script-src 'self'; connect-src 'self' ws://127.0.0.1:8756 ws://localhost:8756"
+    />
+    <title>AI Co-Director Overlay</title>
+    <link rel="stylesheet" href="/overlay.css" />
+  </head>
+  <body>
+    <div id="overlay-text"></div>
+    <script src="/overlay.js" defer></script>
+  </body>
+</html>

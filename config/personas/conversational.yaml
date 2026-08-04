@@ -1,0 +1,12 @@
+name: conversational
+weights: # must sum to 1.0; validated at load
+  relevance: 0.30
+  breadth: 0.25
+  novelty: 0.15
+  urgency: 0.15
+  support_tier: 0.15
+thresholds:
+  surface_min_score: 0.55
+  max_queue_items: 3
+  max_prompts_per_minute: 2
+banned_topics: []
