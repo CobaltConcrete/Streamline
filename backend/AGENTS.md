@@ -18,7 +18,15 @@ Commands from this directory:
 ```powershell
 .\.venv\Scripts\python.exe -m pytest tests -q
 .\.venv\Scripts\python.exe -m ruff check codirector tools
+.\.venv\Scripts\python.exe tools\twitch_oauth.py
+.\.venv\Scripts\python.exe tools\list_ai_models.py
+.\.venv\Scripts\python.exe tools\list_ai_models.py --check-usage
+.\.venv\Scripts\python.exe tools\list_ai_models.py --check-usage --install-opencode
 .\.venv\Scripts\python.exe -m codirector.cli check-config
 .\.venv\Scripts\python.exe -m codirector.cli listen-twitch
 .\.venv\Scripts\python.exe -m codirector.api.server
 ```
+
+OpenCode usage is sourced from the locally installed `opencode stats` command;
+`--install-opencode` installs the official npm package when missing, and
+`OPENCODE_CLI_PATH` can override its executable path.

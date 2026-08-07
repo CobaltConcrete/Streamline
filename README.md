@@ -56,11 +56,61 @@ For Twitch, set `TWITCH_CHANNEL` to the broadcaster login and
 `TWITCH_USER_ACCESS_TOKEN` to a Twitch **user access token** with `chat:read`
 scope. A username alone cannot authenticate chat access.
 
+After registering the Twitch application, put its Client ID and newly created
+Client Secret in `.env`, then run the OAuth helper:
+
+```powershell
+.\backend\.venv\Scripts\python.exe backend\tools\twitch_oauth.py
+```
+
+The helper reads `TWITCH_CLIENT_ID`, `TWITCH_CLIENT_SECRET`, and the optional
+`TWITCH_REDIRECT_URI` from `.env`; opens Twitch authorization with a fresh
+anti-forgery state; and asks for the full callback URL. A localhost connection
+failure in the browser is expected because the project does not run a trusted
+local HTTPS callback server. Paste the URL from the address bar and the helper
+will validate it, exchange the one-time code, and update
+`TWITCH_USER_ACCESS_TOKEN` and `TWITCH_REFRESH_TOKEN` without displaying the
+tokens. Use `--code-only` if you only want the short-lived authorization code.
+
 Check configuration without displaying secret values:
 
 ```powershell
 .\backend\.venv\Scripts\python.exe -m codirector.cli check-config
 ```
+
+List the models available to every configured AI API key:
+
+```powershell
+.\backend\.venv\Scripts\python.exe backend\tools\list_ai_models.py
+```
+
+The output is an ASCII terminal table. Providers without a detected key are
+shown as `NOT AVAILABLE`; invalid credentials or API failures are shown as
+`ERROR`. The command never prints keys. By default it prints every model; use
+`--limit 25` for a shorter table or `--provider openai` to query only one.
+
+Check provider usage and recent organization costs:
+
+```powershell
+.\backend\.venv\Scripts\python.exe backend\tools\list_ai_models.py --check-usage
+```
+
+OpenCode runs the installed CLI's `opencode stats` command and prints its native
+local-session token, cost, model, and tool report below the table. Ensure
+`opencode` is on `PATH`, or let the tool install the official npm package and
+continue automatically:
+
+```powershell
+.\backend\.venv\Scripts\python.exe backend\tools\list_ai_models.py --check-usage --install-opencode
+```
+
+The tool also checks npm's global directory when it is absent from `PATH`.
+Alternatively, set `OPENCODE_CLI_PATH` in `.env` to its executable.
+This local report does not include the hosted Zen credit balance. OpenRouter
+reports per-key usage with `OPENROUTER_API_KEY`. OpenAI and Anthropic
+organization cost reports require the separate optional `OPENAI_ADMIN_KEY` and
+`ANTHROPIC_ADMIN_KEY`; ordinary inference keys cannot read those reports. The
+window defaults to 30 days and can be changed with `--days 7` (maximum 30).
 
 ## Run the application
 

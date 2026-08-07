@@ -38,6 +38,10 @@ py -3.11 -m venv backend\.venv
 .\backend\.venv\Scripts\python.exe -m pytest backend\tests -q
 .\backend\.venv\Scripts\python.exe -m ruff check backend\codirector backend\tools backend\tests
 .\backend\.venv\Scripts\python.exe -m codirector.cli --mock demo-action
+.\backend\.venv\Scripts\python.exe backend\tools\twitch_oauth.py # interactive Twitch OAuth setup
+.\backend\.venv\Scripts\python.exe backend\tools\list_ai_models.py # live provider model inventory
+.\backend\.venv\Scripts\python.exe backend\tools\list_ai_models.py --check-usage
+.\backend\.venv\Scripts\python.exe backend\tools\list_ai_models.py --check-usage --install-opencode
 .\backend\.venv\Scripts\python.exe -m codirector.cli check-config
 .\backend\.venv\Scripts\python.exe -m codirector.cli listen-twitch # real read-only integration smoke test
 .\backend\.venv\Scripts\python.exe -m codirector.api.server
@@ -91,8 +95,11 @@ frontend build is served by FastAPI from `/`.
   them into the running server yet.
 - `.env` AI selection is OpenCode, OpenRouter, Anthropic/Claude, then OpenAI;
   `AI_PROVIDER` can force one. `TWITCH_CLIENT_ID`, `TWITCH_CLIENT_SECRET`, and
-  `TWITCH_REFRESH_TOKEN` are documented for future OAuth renewal/EventSub, but
-  the current IRC adapter directly consumes `TWITCH_USER_ACCESS_TOKEN` only.
+  `TWITCH_REFRESH_TOKEN` support the interactive OAuth setup helper, but the
+  running IRC adapter still directly consumes `TWITCH_USER_ACCESS_TOKEN` and
+  does not automatically refresh an expired token.
+- AI usage discovery runs the local `opencode stats` CLI report (configured by
+  `OPENCODE_CLI_PATH`); it cannot retrieve the hosted Zen credit balance.
 - NeMo ASR and the real OBS/Twitch connections have not been exercised live.
   The content-safety banned-term set is a test placeholder, not a production
   moderation vocabulary.
