@@ -1,11 +1,9 @@
-# ruff: noqa: UP041 -- Python 3.10 compatibility venv has a distinct asyncio timeout class.
 """HTTP reasoning providers with strict, fail-closed structured output.
 
 The environment-backed provider understands OpenCode Zen, OpenRouter,
 Anthropic, and OpenAI. Credential selection is deterministic and never puts a
 secret into a prompt, model, log line, or exception returned to the caller.
 """
-import asyncio
 import json
 import os
 import re
@@ -198,15 +196,7 @@ class AIAPIReasoningProvider:
             text = self._response_text(data)
             result = ReasoningResponse.model_validate_json(_clean_json(text))
             return _ground_response(result, prompt)
-        except (
-            aiohttp.ClientError,
-            TimeoutError,
-            asyncio.TimeoutError,
-            ValueError,
-            TypeError,
-            ValidationError,
-            KeyError,
-        ):
+        except (aiohttp.ClientError, TimeoutError, ValueError, TypeError, ValidationError, KeyError):
             return _EMPTY
 
     def _request(self, prompt: ReasoningPrompt) -> tuple[dict[str, str], dict]:
@@ -359,12 +349,5 @@ class HTTPReasoningProvider:
                 response.raise_for_status()
                 data = await response.json()
             return ReasoningResponse.model_validate(data)
-        except (
-            aiohttp.ClientError,
-            TimeoutError,
-            asyncio.TimeoutError,
-            ValueError,
-            TypeError,
-            ValidationError,
-        ):
+        except (aiohttp.ClientError, TimeoutError, ValueError, TypeError, ValidationError):
             return _EMPTY

@@ -14,7 +14,7 @@ especially its second-half Build Specification v1.0.
 
 ## Prerequisites
 
-- Python 3.11
+- Python 3.12
 - Node.js 20 or newer and npm
 - OBS Studio with OBS WebSocket enabled when using OBS actions
 - A Twitch account token with `chat:read` when using live Twitch chat
@@ -25,7 +25,7 @@ From the repository root, create the Python environment and install the
 backend plus development/test dependencies through `requirements.txt`:
 
 ```powershell
-py -3.11 -m venv backend\.venv
+py -3.12 -m venv backend\.venv
 .\backend\.venv\Scripts\python.exe -m pip install --upgrade pip
 .\backend\.venv\Scripts\python.exe -m pip install -r requirements.txt
 

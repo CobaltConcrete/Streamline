@@ -1,4 +1,3 @@
-# ruff: noqa: UP017 -- Local validation also runs on Python 3.10; datetime.UTC is 3.11+.
 """List models available through every configured AI provider.
 
 Credentials are loaded from the repository-root .env (with process environment
@@ -18,7 +17,7 @@ import urllib.error
 import urllib.request
 from collections.abc import Mapping
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any
@@ -229,7 +228,7 @@ def _money(value: object, *, minor_units: bool = False) -> str:
 
 
 def _usage_period(days: int) -> tuple[datetime, datetime]:
-    end = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    end = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
     return end - timedelta(days=days), end
 
 

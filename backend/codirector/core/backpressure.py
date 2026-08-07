@@ -3,13 +3,10 @@
 pipeline consumes them (Twitch chat under load being the primary case)."""
 import asyncio
 from dataclasses import dataclass, field
-from typing import Generic, TypeVar
-
-T = TypeVar("T")
 
 
 @dataclass
-class BoundedDropOldestQueue(Generic[T]):
+class BoundedDropOldestQueue[T]:
     maxsize: int = 1000
     _queue: asyncio.Queue = field(init=False, repr=False)
     drop_count: int = field(default=0, init=False)

@@ -11,7 +11,7 @@ The authoritative spec is
 `AI_Stream_Co_Director_PRD_v0.1.docx`. The second half, titled **AI Stream
 Co-Director - Build Specification v1.0**, replaces conflicting v0.1 details.
 In particular: Twitch only, no gameplay capture/telemetry, no outbound chat or
-voice, Python 3.11, React 18, local SQLite, and OBSERVE on every startup.
+voice, Python 3.12, React 18, local SQLite, and OBSERVE on every startup.
 
 Major pieces:
 
@@ -28,12 +28,12 @@ Major pieces:
 
 ## Setup and commands
 
-Backend (Python 3.11 required by the build spec):
+Backend (Python 3.12):
 
 ```powershell
 Copy-Item .env.example .env # from the repository root, if .env is absent
 # Fill in one AI key plus TWITCH_CHANNEL/TWITCH_USER_ACCESS_TOKEN.
-py -3.11 -m venv backend\.venv
+py -3.12 -m venv backend\.venv
 .\backend\.venv\Scripts\python.exe -m pip install -r requirements.txt
 .\backend\.venv\Scripts\python.exe -m pytest backend\tests -q
 .\backend\.venv\Scripts\python.exe -m ruff check backend\codirector backend\tools backend\tests
@@ -103,9 +103,8 @@ frontend build is served by FastAPI from `/`.
 - NeMo ASR and the real OBS/Twitch connections have not been exercised live.
   The content-safety banned-term set is a test placeholder, not a production
   moderation vocabulary.
-- The local ignored `backend/.venv` was created with Python 3.10 because this
-  workstation lacks 3.11. Package metadata correctly requires 3.11; recreate
-  the environment with Python 3.11 before release validation.
+- The local ignored `backend/.venv` uses Python 3.12, matching the package
+  metadata and documented development environment.
 - `docs/DEMO_RUNBOOK.md` is a target rehearsal guide. Its screenshot and two
   signed rehearsal rows are intentionally still missing.
 

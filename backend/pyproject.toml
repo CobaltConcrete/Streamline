@@ -2,7 +2,7 @@
 name = "codirector"
 version = "0.1.0"
 description = "AI Stream Co-Director — deterministic-policy production assistant POC"
-requires-python = ">=3.11,<3.12"
+requires-python = ">=3.12,<3.13"
 dependencies = [
     "pydantic>=2.6",
     "fastapi>=0.110",
@@ -12,9 +12,9 @@ dependencies = [
     "python-dotenv>=1.0",
     "keyring>=25.0",
     "obsws-python>=1.7",
-    "twitchio>=2.10",
+    "twitchio>=2.10,<3.0",
     "sounddevice>=0.4.6",
-    "webrtcvad>=2.0.10",
+    "webrtcvad-wheels>=2.0.14",
     "numpy>=1.26",
     "aiohttp>=3.9",
     "keyboard>=0.13.5",
@@ -39,7 +39,7 @@ testpaths = ["tests"]
 
 [tool.ruff]
 line-length = 100
-target-version = "py311"
+target-version = "py312"
 
 [build-system]
 requires = ["setuptools>=68"]
