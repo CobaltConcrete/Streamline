@@ -78,8 +78,9 @@ frontend build is served by FastAPI from `/`.
 - Chat filtering is local and deterministic: emoji/symbol-only comments and
   comments below the configurable three-recognized-English-word default do not
   enter batches; common reaction tokens such as `pog`/`lol` never count toward
-  that floor. Accepted chat makes a batch ready at 50 representative texts or
-  120 seconds by default, whichever occurs first.
+  that floor. Accepted chat currently makes a batch ready at 50 representative
+  texts or 10 seconds, whichever occurs first; 10 seconds is a temporary live
+  test setting intended to return to 120 seconds.
 - Public overlay content must remain plain text. Keep `overlay.html`,
   `overlay.js`, and `overlay.css` isolated and CSP-restricted.
 - Unit logic gets explicit time inputs. Integration/acceptance tests use mocks
@@ -87,14 +88,10 @@ frontend build is served by FastAPI from `/`.
 
 ## Current limitations and gotchas
 
-- The policy pipeline and real adapters exist, but the FastAPI server does not
-  yet instantiate and continuously wire Twitch + ASR + OBS into `Pipeline`.
-  The dashboard therefore remains empty when only the server is launched.
-- The core pipeline exposes count/deadline batch readiness, but the absent live
-  runtime also means no server scheduler currently calls `flush_batch()` at its
-  deadline.
-- Because that live runtime is absent, the API kill switch clears the UI queue
-  and forces OBSERVE, but the server is not yet connected to a live
+- FastAPI now owns the live read-only Twitch-to-reasoning runtime and publishes
+  immediate filter status plus completed LLM batches to the private dashboard.
+  ASR and OBS are not yet wired into that runtime. The API kill switch clears
+  the UI queue and forces OBSERVE, but is not connected to a live
   `OBSOrchestrator`; the global hotkey class is also not registered at startup.
 - Assist-mode **Accept** currently records/removes a queue item only; it does
   not execute a proposed OBS action. Do not present the current build as a

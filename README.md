@@ -34,8 +34,20 @@ npm install
 cd ..
 ```
 
+After installation, start both backend and frontend on Windows with:
+
+```powershell
+.\start_app.bat
+```
+
+PowerShell and Bash alternatives are `start_app.ps1` and `start_app.sh`; see
+`START_APP.md` for options and behavior. Each launcher also accepts a stop flag:
+`start_app.bat -Stop`, `start_app.ps1 -Stop`, or `start_app.sh --stop`.
+
 The dependency definitions in `backend/pyproject.toml` remain canonical;
-`requirements.txt` is a convenient root-level installer. For optional local
+`requirements.txt` is the root-level installer and applies the tested pins in
+`requirements-lock.txt` for a reproducible Python 3.12 Windows environment.
+For optional local
 Parakeet ASR support, install `-e ".\backend[asr]"` after preparing a compatible
 NVIDIA/CUDA environment.
 
@@ -84,7 +96,7 @@ not consume LLM input. Configure the limits in `config/app.yaml`:
 ```yaml
 pipeline:
   chat_batch_max_representative_texts: 50
-  chat_batch_max_wait_s: 120
+  chat_batch_max_wait_s: 10 # temporary live-test setting; restore to 120 later
   chat_filter_min_recognized_words: 3
 ```
 
@@ -99,6 +111,13 @@ and known Twitch/BTTV/FFZ/7TV emote names contribute zero toward the three-word
 threshold. The filter intentionally has a static Twitch vocabulary, but
 channel-specific emotes and non-English chat require future metadata-aware and
 language-aware extensions.
+
+FastAPI now owns the live read-only Twitch adapter. Every received comment is
+pushed immediately to the private Recent Twitch Chat panel with its filter
+status. When the batch closes, all accepted representative texts and their
+unique-user counts are sent to reasoning; validated proposals are published to
+the LLM Analysis panel. The current 10-second deadline is intentionally short
+for integration testing and should be restored to 120 seconds for normal use.
 
 Reasoning uses up to three attempts for retryable timeouts, transient HTTP
 failures, invalid JSON, or schema-invalid output. Permanent client errors such

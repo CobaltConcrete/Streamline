@@ -3,6 +3,7 @@ import { api, useEventStream } from "./hooks/useEventStream";
 import { Header } from "./components/Header";
 import { Queue } from "./components/Queue";
 import { DecisionLog } from "./components/DecisionLog";
+import { LiveChatAnalysis } from "./components/LiveChatAnalysis";
 
 export default function App() {
   const state = useEventStream();
@@ -25,6 +26,11 @@ export default function App() {
     <div className="app">
       <Header state={state} />
       <main className="main">
+        <LiveChatAnalysis
+          chat={state.recentChat}
+          analyses={state.analysisResults}
+          lastBatch={state.lastBatch}
+        />
         <Queue items={state.activeQueue} heldCount={state.heldCount} />
         <DecisionLog entries={state.decisionLog} />
       </main>

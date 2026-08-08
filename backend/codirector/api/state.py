@@ -13,6 +13,8 @@ from codirector.policy.catalog import ActionCatalog
 from codirector.queue.interaction_queue import InteractionQueue
 
 _DECISION_LOG_CAP = 200
+_RECENT_CHAT_CAP = 100
+_ANALYSIS_CAP = 100
 
 
 @dataclass
@@ -37,6 +39,9 @@ class AppState:
             name: ComponentHealth() for name in ("obs", "twitch", "asr", "reasoning")
         }
         self.decision_log: list[Decision] = []
+        self.recent_chat: list[dict] = []
+        self.analysis_results: list[dict] = []
+        self.last_batch: dict | None = None
         self._websockets: list[WebSocket] = []
         self._overlay_websockets: list[WebSocket] = []
 
@@ -60,6 +65,15 @@ class AppState:
     def record_decision(self, decision: Decision) -> None:
         self.decision_log.insert(0, decision)
         del self.decision_log[_DECISION_LOG_CAP:]
+
+    def record_chat(self, item: dict) -> None:
+        self.recent_chat.insert(0, item)
+        del self.recent_chat[_RECENT_CHAT_CAP:]
+
+    def record_analysis(self, items: list[dict], batch: dict) -> None:
+        self.analysis_results[0:0] = items
+        del self.analysis_results[_ANALYSIS_CAP:]
+        self.last_batch = batch
 
     def register_websocket(self, ws: WebSocket) -> None:
         self._websockets.append(ws)
@@ -107,6 +121,9 @@ class AppState:
             "health": {name: {"status": h.status, "detail": h.detail} for name, h in self.health.items()},
             "queue": _serialize_queue(self.queue),
             "decision_log": [_serialize_decision(d) for d in self.decision_log[:50]],
+            "recent_chat": self.recent_chat,
+            "analysis_results": self.analysis_results,
+            "last_batch": self.last_batch,
         }
 
 

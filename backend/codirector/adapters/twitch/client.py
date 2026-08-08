@@ -9,9 +9,11 @@ they can be unit-tested without a network call (§0: "No network call to a
 real third party in unit or integration tests. Ever."). TwitchAdapter itself
 wires those pure functions to twitchio.Client's callbacks.
 """
+import asyncio
 import time
 import uuid
 from collections.abc import AsyncIterator
+from contextlib import suppress
 
 import twitchio
 
@@ -123,6 +125,7 @@ class TwitchAdapter:
         self._seen_ids: set[str] = set()  # R-CHT-02: dedupe by Twitch message id
         self._status = "down"
         self._detail = "not connected"
+        self._client_task: asyncio.Task | None = None
         adapter = self
 
         class _InnerClient(twitchio.Client):
@@ -175,9 +178,18 @@ class TwitchAdapter:
         self._queue.put_nowait(event)  # R-CHT-03
 
     async def connect(self) -> None:
-        import asyncio
+        if self._client_task is not None and not self._client_task.done():
+            return
+        self._client_task = asyncio.create_task(self._client.start(), name="twitchio-client")
+        self._client_task.add_done_callback(self._client_stopped)
 
-        asyncio.ensure_future(self._client.start())
+    def _client_stopped(self, task: asyncio.Task) -> None:
+        if task.cancelled():
+            return
+        error = task.exception()
+        if error is not None:
+            self._status = "down"
+            self._detail = f"connection failed: {error}"
 
     async def events(self) -> AsyncIterator[ChatMessageEvent | SupportEvent]:
         while True:
@@ -185,6 +197,9 @@ class TwitchAdapter:
 
     async def disconnect(self) -> None:
         await self._client.close()
+        if self._client_task is not None:
+            with suppress(asyncio.CancelledError):
+                await self._client_task
         self._status = "down"
         self._detail = "disconnected"
 

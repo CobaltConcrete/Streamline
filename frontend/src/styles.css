@@ -145,7 +145,9 @@ button:focus-visible {
 }
 
 .queue,
-.decision-log {
+.decision-log,
+.live-chat,
+.llm-analysis {
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -154,9 +156,71 @@ button:focus-visible {
 }
 
 .queue h2,
-.decision-log h2 {
+.decision-log h2,
+.live-chat h2,
+.llm-analysis h2 {
   margin-top: 0;
   font-size: 1.1rem;
+}
+
+.chat-list,
+.analysis-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.chat-list li,
+.analysis-list li {
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--ok);
+  border-radius: 8px;
+  background: #1d222a;
+}
+
+.chat-list li.chat-filtered {
+  border-left-color: var(--degraded);
+}
+
+.chat-list span,
+.batch-summary,
+.analysis-list header {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.analysis-list header {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.analysis-decision {
+  font-weight: 700;
+}
+
+.decision-surface {
+  color: var(--ok);
+}
+
+.decision-hold {
+  color: var(--degraded);
+}
+
+.decision-ignore {
+  color: var(--down);
+}
+
+.analysis-text {
+  font-weight: 700;
+}
+
+.analysis-list p {
+  margin: 0.35rem 0 0;
 }
 
 .held-count {

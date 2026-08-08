@@ -42,7 +42,7 @@ class ReasoningConfig(BaseModel):
 
 class PipelineConfig(BaseModel):
     chat_batch_max_representative_texts: int = Field(default=50, ge=1)
-    chat_batch_max_wait_s: float = Field(default=120.0, gt=0)
+    chat_batch_max_wait_s: float = Field(default=10.0, gt=0)
     chat_filter_min_recognized_words: int = Field(default=3, ge=1)
     rolling_window_s: int = 90
     decision_ttl_s: int = 20

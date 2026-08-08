@@ -29,7 +29,8 @@ reasoning:
   max_attempts: 3
 pipeline:
   chat_batch_max_representative_texts: 50
-  chat_batch_max_wait_s: 120
+  # Temporarily shortened from 120 seconds for live integration testing.
+  chat_batch_max_wait_s: 10
   chat_filter_min_recognized_words: 3
   rolling_window_s: 90
   decision_ttl_s: 20

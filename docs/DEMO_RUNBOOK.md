@@ -6,7 +6,7 @@ in sync with `config/action_catalog.yaml` — if the catalog changes, update
 the beat sheet's action IDs and cooldowns to match.
 
 > **Current status:** this is the target rehearsal sequence, not a claim that
-> a live demo is ready. The server does not yet wire the real adapters into
+> a complete live demo is ready. The server wires Twitch to reasoning, but does not yet wire ASR and OBS into
 > `Pipeline`; Assist approval does not execute OBS actions; the global hotkey
 > is not registered; and the chat harness does not inject into the server.
 > Complete those items and two clean rehearsals before using this runbook live.

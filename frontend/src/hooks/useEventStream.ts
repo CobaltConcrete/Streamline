@@ -28,6 +28,35 @@ export interface DecisionLogEntry {
   created_at: number;
 }
 
+export interface RecentChatItem {
+  message_id: string;
+  display_name: string;
+  text: string;
+  accepted: boolean;
+  filter_reason: "emoji_only" | "unintelligible" | null;
+  received_at: string;
+}
+
+export interface AnalysisResult {
+  batch_id: string;
+  cluster_id: string;
+  decision_type: "SURFACE" | "HOLD" | "IGNORE";
+  representative_text: string;
+  unique_user_count: number;
+  response_angle: string;
+  relevance: number;
+  rationale: string;
+  analyzed_at: string;
+}
+
+export interface BatchSummary {
+  batch_id: string;
+  representative_text_count: number;
+  proposal_count: number;
+  elapsed_seconds: number;
+  completed_at: string;
+}
+
 export interface CodirectorState {
   connected: boolean;
   autonomy: "OBSERVE" | "ASSIST" | "CO_DIRECT";
@@ -36,6 +65,9 @@ export interface CodirectorState {
   activeQueue: QueueItemView[];
   heldCount: number;
   decisionLog: DecisionLogEntry[];
+  recentChat: RecentChatItem[];
+  analysisResults: AnalysisResult[];
+  lastBatch: BatchSummary | null;
 }
 
 const INITIAL_STATE: CodirectorState = {
@@ -46,6 +78,9 @@ const INITIAL_STATE: CodirectorState = {
   activeQueue: [],
   heldCount: 0,
   decisionLog: [],
+  recentChat: [],
+  analysisResults: [],
+  lastBatch: null,
 };
 
 // Single WebSocket hook — §5.11: "No routing, no state library beyond React
@@ -94,6 +129,9 @@ function applyMessage(s: CodirectorState, msg: any): CodirectorState {
         activeQueue: msg.queue.active,
         heldCount: msg.queue.held_count,
         decisionLog: msg.decision_log,
+        recentChat: msg.recent_chat ?? [],
+        analysisResults: msg.analysis_results ?? [],
+        lastBatch: msg.last_batch ?? null,
       };
     case "autonomy_changed":
       return { ...s, autonomy: msg.level };
@@ -109,6 +147,17 @@ function applyMessage(s: CodirectorState, msg: any): CodirectorState {
       return { ...s, killSwitchEngaged: false };
     case "queue_changed":
       return { ...s, activeQueue: msg.queue.active, heldCount: msg.queue.held_count };
+    case "health_changed":
+      return { ...s, health: msg.health };
+    case "chat_received":
+      return { ...s, recentChat: msg.recent_chat };
+    case "analysis_completed":
+      return {
+        ...s,
+        health: msg.health,
+        analysisResults: msg.analysis_results,
+        lastBatch: msg.last_batch,
+      };
     default:
       return s;
   }

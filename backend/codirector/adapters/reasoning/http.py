@@ -387,6 +387,21 @@ def create_reasoning_provider(config: ReasoningConfig):
     settings = resolve_ai_provider(requested=config.provider)
     if config.model:
         settings = replace(settings, model=config.model)
+    if settings.name == "opencode":
+        from codirector.adapters.reasoning.opencode_server import (
+            OpenCodeServerReasoningProvider,
+        )
+
+        return OpenCodeServerReasoningProvider(
+            models=[settings.model, *config.fallback_models],
+            structured_output_mode=config.structured_output_mode,
+            max_attempts=config.max_attempts,
+            timeout_s=config.timeout_s,
+            server_url=_value(
+                os.environ, "OPENCODE_SERVER_URL", "http://127.0.0.1:4097"
+            ),
+            cli_path=_value(os.environ, "OPENCODE_CLI_PATH", "opencode"),
+        )
     return AIAPIReasoningProvider(
         settings,
         timeout_s=config.timeout_s,

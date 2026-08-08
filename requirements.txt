@@ -1,3 +1,4 @@
-# Canonical dependency versions and optional groups live in backend/pyproject.toml.
-# This convenience file installs the backend plus its test/lint tooling.
+# Canonical dependency declarations and optional groups live in backend/pyproject.toml.
+# The constraints lock reproduces the tested Python 3.12 app/dev environment.
+-c requirements-lock.txt
 -e ./backend[dev]
