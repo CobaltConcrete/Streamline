@@ -34,7 +34,7 @@ npm install
 cd ..
 ```
 
-After installation, start both backend and frontend on Windows with:
+After installation and credential setup, start both backend and frontend on Windows with:
 
 ```powershell
 .\start_app.bat
@@ -60,35 +60,116 @@ if it is missing:
 Copy-Item .env.example .env
 ```
 
-Add at least one AI key. With `AI_PROVIDER=auto`, the first configured key is
-used in this order: OpenCode Zen, OpenRouter, Anthropic/Claude, then OpenAI.
-Set `AI_PROVIDER` to a provider name to force a specific integration.
+Never commit `.env`. It contains Twitch and AI credentials and is ignored by
+Git.
 
-For Twitch, set `TWITCH_CHANNEL` to the broadcaster login and
-`TWITCH_USER_ACCESS_TOKEN` to a Twitch **user access token** with `chat:read`
-scope. A username alone cannot authenticate chat access.
+## Twitch tokens and running the app
 
-After registering the Twitch application, put its Client ID and newly created
-Client Secret in `.env`, then run the OAuth helper:
+### 1. Configure `.env`
+
+Create an application in the Twitch Developer Console and register this OAuth
+redirect URL (or the value you choose for `TWITCH_REDIRECT_URI`):
+
+```text
+https://localhost:3000/
+```
+
+Set the following fields in the root `.env` file. Do not put real secret
+values in `.env.example`:
+
+```dotenv
+AI_PROVIDER=opencode
+OPENCODE_API_KEY=your_opencode_key
+
+TWITCH_CHANNEL=your_broadcaster_login
+TWITCH_CLIENT_ID=your_twitch_application_client_id
+TWITCH_CLIENT_SECRET=your_twitch_application_client_secret
+TWITCH_REDIRECT_URI=https://localhost:3000/
+
+# The OAuth helper fills these two fields.
+TWITCH_USER_ACCESS_TOKEN=
+TWITCH_REFRESH_TOKEN=
+```
+
+`TWITCH_CHANNEL` is the channel login from its URL, without `#`; for example,
+`https://twitch.tv/example_name` uses `TWITCH_CHANNEL=example_name`.
+
+### 2. Obtain the Twitch user and refresh tokens
+
+From the repository root, run:
 
 ```powershell
 .\backend\.venv\Scripts\python.exe backend\tools\twitch_oauth.py
 ```
 
-The helper reads `TWITCH_CLIENT_ID`, `TWITCH_CLIENT_SECRET`, and the optional
-`TWITCH_REDIRECT_URI` from `.env`; opens Twitch authorization with a fresh
-anti-forgery state; and asks for the full callback URL. A localhost connection
-failure in the browser is expected because the project does not run a trusted
-local HTTPS callback server. Paste the URL from the address bar and the helper
-will validate it, exchange the one-time code, and update
-`TWITCH_USER_ACCESS_TOKEN` and `TWITCH_REFRESH_TOKEN` without displaying the
-tokens. Use `--code-only` if you only want the short-lived authorization code.
+The helper opens Twitch authorization and requests the read-only `chat:read`
+scope. After authorization, the browser may show a localhost connection error;
+this is expected. Copy the complete URL from the browser address bar and paste
+it into the helper. It validates the callback and writes both tokens into
+`.env` without printing their values.
 
-Check configuration without displaying secret values:
+If Twitch later reports `Invalid or unauthorized Access Token passed`, rerun
+the same helper to renew authorization.
+
+### 3. Verify configuration
 
 ```powershell
 .\backend\.venv\Scripts\python.exe -m codirector.cli check-config
 ```
+
+This reports whether Twitch and AI settings are present without displaying
+secret values. A successful live connection is shown on the dashboard after
+startup as `Twitch: connected`.
+
+### 4. Start backend and frontend
+
+Windows Command Prompt or a double-click in File Explorer:
+
+```bat
+start_app.bat
+```
+
+PowerShell:
+
+```powershell
+.\start_app.ps1
+```
+
+Git Bash, Linux, or macOS:
+
+```bash
+bash ./start_app.sh
+```
+
+The launcher starts both services and opens the dashboard at
+`http://localhost:5173`. Twitch chat can connect before the stream goes live,
+so it is preferable to start Streamline first and then start the stream.
+
+Send a comment containing at least three recognized content words, such as
+`this is a dashboard test`. It appears immediately in Recent Twitch Chat. The
+current test configuration sends its representative cluster to the LLM after
+10 seconds or after 50 representative texts accumulate, whichever happens
+first.
+
+### 5. Stop all services
+
+Use the matching launcher:
+
+```bat
+start_app.bat -Stop
+```
+
+```powershell
+.\start_app.ps1 -Stop
+```
+
+```bash
+bash ./start_app.sh --stop
+```
+
+Add at least one AI key. With `AI_PROVIDER=auto`, the first configured key is
+used in this order: OpenCode Zen, OpenRouter, Anthropic/Claude, then OpenAI.
+Set `AI_PROVIDER` to a provider name to force a specific integration.
 
 Chat is filtered and batched locally before reasoning so rejected comments do
 not consume LLM input. Configure the limits in `config/app.yaml`:
