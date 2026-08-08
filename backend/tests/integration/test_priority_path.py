@@ -4,6 +4,7 @@ decisions after an explicit flush_batch() call."""
 from codirector.adapters.base import ReasoningPrompt
 from codirector.adapters.obs.mock import MockOBSProvider
 from codirector.core.autonomy import AutonomyLevel
+from codirector.core.chat_filter import ChatCommentFilter
 from codirector.core.clustering import Clusterer
 from codirector.core.events import ChatMessageEvent, SupportEvent
 from codirector.core.models import Proposal, ReasoningResponse
@@ -30,7 +31,7 @@ class _AlwaysSurface:
         )
 
 
-def _build_pipeline() -> Pipeline:
+def _build_pipeline(**pipeline_options) -> Pipeline:
     catalog = ActionCatalog.model_validate({"version": 1, "actions": []})
     obs = MockOBSProvider()
     orchestrator = OBSOrchestrator(obs)
@@ -41,6 +42,8 @@ def _build_pipeline() -> Pipeline:
     return Pipeline(
         clusterer=Clusterer(), phase_engine=phase_engine, reasoning=_AlwaysSurface(), policy=policy,
         interaction_queue=queue, persona=PERSONA, catalog=catalog, autonomy=AutonomyLevel.ASSIST,
+        chat_filter=ChatCommentFilter(min_recognized_words=1),
+        **pipeline_options,
     )
 
 
@@ -64,3 +67,58 @@ async def test_support_event_bypasses_batch():
     decisions = await pipeline.ingest_support(support_event, now=0.0, live_obs_state={"program_scene": "Gameplay"})
     assert len(decisions) == 1
     assert pipeline._queue.active_items() != [] or pipeline._queue.held_items() != []
+
+
+async def test_chat_batch_is_ready_on_count_or_deadline_and_resets_after_flush():
+    pipeline = _build_pipeline(chat_batch_max_representative_texts=2, chat_batch_max_wait_s=120)
+
+    first = ChatMessageEvent(
+        event_id="c1", event_time=10.0, ingest_time=10.0,
+        wall_time="1970-01-01T00:00:10.000Z", trust="viewer",
+        user_id="u1", display_name="u1", text="hello streamer",
+    )
+    duplicate = first.model_copy(
+        update={"event_id": "c2", "event_time": 11.0, "ingest_time": 11.0, "user_id": "u2"}
+    )
+    second_representative = first.model_copy(
+        update={
+            "event_id": "c3", "event_time": 12.0, "ingest_time": 12.0,
+            "user_id": "u3", "text": "which mechanical keyboard works best",
+        }
+    )
+
+    await pipeline.ingest_chat(first, now=10.0)
+    assert pipeline.pending_representative_text_count == 1
+    assert pipeline.chat_batch_ready(now=129.9) is False
+    assert pipeline.chat_batch_ready(now=130.0) is True
+
+    await pipeline.ingest_chat(duplicate, now=11.0)
+    assert pipeline.accepted_chat_count == 2
+    assert pipeline.pending_representative_text_count == 1
+    assert pipeline.chat_batch_ready(now=11.0) is False
+
+    await pipeline.ingest_chat(second_representative, now=12.0)
+    assert pipeline.pending_representative_text_count == 2
+    assert pipeline.chat_batch_ready(now=12.0) is True
+    await pipeline.flush_batch(now=12.0, live_obs_state={"program_scene": "Gameplay"})
+    assert pipeline.accepted_chat_count == 0
+    assert pipeline.pending_representative_text_count == 0
+    assert pipeline.chat_batch_ready(now=500.0) is False
+
+
+async def test_filtered_chat_does_not_consume_batch_capacity_or_start_timer():
+    pipeline = _build_pipeline(chat_batch_max_representative_texts=1, chat_batch_max_wait_s=1)
+    emoji = ChatMessageEvent(
+        event_id="emoji", event_time=0.0, ingest_time=0.0,
+        wall_time="1970-01-01T00:00:00.000Z", trust="viewer",
+        user_id="u1", display_name="u1", text="😂🔥",
+    )
+    gibberish = emoji.model_copy(
+        update={"event_id": "gibberish", "user_id": "u2", "text": "asdfgh qwrty"}
+    )
+
+    assert await pipeline.ingest_chat(emoji, now=0.0) is None
+    assert await pipeline.ingest_chat(gibberish, now=5.0) is None
+    assert pipeline.accepted_chat_count == 0
+    assert pipeline.chat_batch_ready(now=100.0) is False
+    assert pipeline.filtered_chat_counts == {"emoji_only": 1, "unintelligible": 1}

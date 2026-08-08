@@ -75,6 +75,11 @@ frontend build is served by FastAPI from `/`.
   and display. Send durations, not server monotonic timestamps, to browsers.
 - Unknown actions/config values fail closed. Never add OBS object names outside
   `config/action_catalog.yaml`.
+- Chat filtering is local and deterministic: emoji/symbol-only comments and
+  comments below the configurable three-recognized-English-word default do not
+  enter batches; common reaction tokens such as `pog`/`lol` never count toward
+  that floor. Accepted chat makes a batch ready at 50 representative texts or
+  120 seconds by default, whichever occurs first.
 - Public overlay content must remain plain text. Keep `overlay.html`,
   `overlay.js`, and `overlay.css` isolated and CSP-restricted.
 - Unit logic gets explicit time inputs. Integration/acceptance tests use mocks
@@ -85,6 +90,9 @@ frontend build is served by FastAPI from `/`.
 - The policy pipeline and real adapters exist, but the FastAPI server does not
   yet instantiate and continuously wire Twitch + ASR + OBS into `Pipeline`.
   The dashboard therefore remains empty when only the server is launched.
+- The core pipeline exposes count/deadline batch readiness, but the absent live
+  runtime also means no server scheduler currently calls `flush_batch()` at its
+  deadline.
 - Because that live runtime is absent, the API kill switch clears the UI queue
   and forces OBSERVE, but the server is not yet connected to a live
   `OBSOrchestrator`; the global hotkey class is also not registered at startup.
@@ -98,6 +106,9 @@ frontend build is served by FastAPI from `/`.
   `TWITCH_REFRESH_TOKEN` support the interactive OAuth setup helper, but the
   running IRC adapter still directly consumes `TWITCH_USER_ACCESS_TOKEN` and
   does not automatically refresh an expired token.
+- Reasoning defaults to OpenCode `deepseek-v4-flash-free`, then the free-model
+  fallback list in `config/app.yaml`. Native schema attributes are the default;
+  `structured_output_mode: system_prompt` retains the tested prompt-only path.
 - AI usage discovery runs the local `opencode stats` CLI report (configured by
   `OPENCODE_CLI_PATH`); it cannot retrieve the hosted Zen credit balance.
 - NeMo ASR and the real OBS/Twitch connections have not been exercised live.

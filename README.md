@@ -78,6 +78,58 @@ Check configuration without displaying secret values:
 .\backend\.venv\Scripts\python.exe -m codirector.cli check-config
 ```
 
+Chat is filtered and batched locally before reasoning so rejected comments do
+not consume LLM input. Configure the limits in `config/app.yaml`:
+
+```yaml
+pipeline:
+  chat_batch_max_representative_texts: 50
+  chat_batch_max_wait_s: 120
+  chat_filter_min_recognized_words: 3
+```
+
+A batch becomes ready when it contains 50 pending representative texts or the
+time limit from its first pending representative text expires, whichever
+happens first. Accepted comments are clustered as they arrive, so 50 copies of
+the same question consume one representative-text slot while still updating
+the cluster's member and unique-user counts. Emoji/symbol-only comments and
+comments with fewer than three recognized English words are rejected without an
+LLM call. Reaction-only terms such as `pog`, `lol`, `lmao`, `lel`, and `rofl`
+and known Twitch/BTTV/FFZ/7TV emote names contribute zero toward the three-word
+threshold. The filter intentionally has a static Twitch vocabulary, but
+channel-specific emotes and non-English chat require future metadata-aware and
+language-aware extensions.
+
+Reasoning uses up to three attempts for retryable timeouts, transient HTTP
+failures, invalid JSON, or schema-invalid output. Permanent client errors such
+as invalid credentials or insufficient credit skip directly to the next model.
+Retries apply to the compressed batch request, not separately to every raw
+comment. Configure structured output and the OpenCode fallback order in
+`config/app.yaml`:
+
+```yaml
+reasoning:
+  structured_output_mode: attribute # or: system_prompt
+  model: "deepseek-v4-flash-free"
+  fallback_models:
+    - "longcat-2.0-free"
+    - "ling-3.0-tiny-free"
+    - "mimo-v2.5-free"
+    - "laguna-s-2.1-free"
+    - "nemotron-3-ultra-free"
+  timeout_s: 45
+  max_attempts: 3
+```
+
+`attribute` is the default and sends the schema through the provider's native
+structured-output field. `system_prompt` omits that field and embeds the exact
+same schema in the system/developer prompt. Big Pickle is intentionally absent;
+North Mini Code is disabled because its tested upstream authorization path was
+unusable. The fallback list is used only with OpenCode, preventing OpenCode
+model IDs from leaking into other provider integrations. The order reflects
+the 50-representative-text V6 results, with LongCat first for its 3/3 native
+schema success rate.
+
 List the models available to every configured AI API key:
 
 ```powershell

@@ -27,12 +27,23 @@ class ASRConfig(BaseModel):
 class ReasoningConfig(BaseModel):
     provider: Literal["auto", "opencode", "openrouter", "anthropic", "openai", "http", "mock"] = "auto"
     endpoint: str = ""
-    model: str = ""
-    timeout_s: float = 3.0
+    model: str = "deepseek-v4-flash-free"
+    fallback_models: list[str] = Field(default_factory=lambda: [
+        "longcat-2.0-free",
+        "ling-3.0-tiny-free",
+        "mimo-v2.5-free",
+        "laguna-s-2.1-free",
+        "nemotron-3-ultra-free",
+    ])
+    structured_output_mode: Literal["attribute", "system_prompt"] = "attribute"
+    timeout_s: float = 45.0
+    max_attempts: int = Field(default=3, ge=1)
 
 
 class PipelineConfig(BaseModel):
-    micro_batch_ms: int = 1500
+    chat_batch_max_representative_texts: int = Field(default=50, ge=1)
+    chat_batch_max_wait_s: float = Field(default=120.0, gt=0)
+    chat_filter_min_recognized_words: int = Field(default=3, ge=1)
     rolling_window_s: int = 90
     decision_ttl_s: int = 20
 

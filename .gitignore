@@ -221,3 +221,9 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Downloaded/generated Twitch datasets (kept locally)
+datasets/.cache/
+datasets/twitch_chat/
+datasets/twitch_chat_combined.csv
+datasets/twitch_chat_valid.csv

@@ -15,10 +15,22 @@ asr:
 reasoning:
   provider: auto
   endpoint: ""
-  model: ""
-  timeout_s: 3.0
+  # attribute uses the provider's native schema field; system_prompt embeds the
+  # same schema in the system/developer instruction as a compatibility fallback.
+  structured_output_mode: attribute # attribute | system_prompt
+  model: "deepseek-v4-flash-free"
+  fallback_models:
+    - "longcat-2.0-free"
+    - "ling-3.0-tiny-free"
+    - "mimo-v2.5-free"
+    - "laguna-s-2.1-free"
+    - "nemotron-3-ultra-free"
+  timeout_s: 45.0
+  max_attempts: 3
 pipeline:
-  micro_batch_ms: 1500
+  chat_batch_max_representative_texts: 50
+  chat_batch_max_wait_s: 120
+  chat_filter_min_recognized_words: 3
   rolling_window_s: 90
   decision_ttl_s: 20
 autonomy:

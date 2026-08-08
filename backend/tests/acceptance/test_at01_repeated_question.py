@@ -7,6 +7,7 @@ import json
 from codirector.adapters.base import ReasoningPrompt
 from codirector.adapters.obs.mock import MockOBSProvider
 from codirector.core.autonomy import AutonomyLevel
+from codirector.core.chat_filter import ChatCommentFilter
 from codirector.core.clustering import Clusterer
 from codirector.core.events import ChatMessageEvent
 from codirector.core.models import Proposal, ReasoningResponse
@@ -66,6 +67,7 @@ async def test_at01_repeated_question_cluster():
         persona=PERSONA,
         catalog=catalog,
         autonomy=AutonomyLevel.ASSIST,
+        chat_filter=ChatCommentFilter(min_recognized_words=1),
     )
 
     for event in events:

@@ -172,7 +172,13 @@ def check_config() -> None:
     try:
         settings = resolve_ai_provider(requested=config.reasoning.provider)
         endpoint_host = urlsplit(settings.endpoint).netloc
-        print(f"  AI: ready ({settings.name}, model={settings.model}, host={endpoint_host})")
+        runtime_model = config.reasoning.model or settings.model
+        fallback_count = len(config.reasoning.fallback_models) if settings.name == "opencode" else 0
+        print(
+            f"  AI: ready ({settings.name}, model={runtime_model}, "
+            f"schema={config.reasoning.structured_output_mode}, "
+            f"fallbacks={fallback_count}, host={endpoint_host})"
+        )
     except MissingAIProviderError as exc:
         print(f"  AI: not ready ({exc})")
 

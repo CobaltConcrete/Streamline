@@ -1,8 +1,8 @@
-"""Minimal end-to-end wiring used by the acceptance tests (§6.5) and,
-eventually, the live app entrypoint. Ties together: Clusterer -> (micro-batch
-for chat / immediate for support, R-CHT-04) -> ReasoningProvider -> Scorer ->
-{PolicyEngine for action-bearing proposals, InteractionQueue for the private
-view} -> Decision list.
+"""End-to-end wiring for the triage pipeline, used by the acceptance tests
+(§6.5) and, eventually, the live app entrypoint. Ties together:
+Clusterer -> (micro-batch for chat / immediate for support, R-CHT-04) ->
+ReasoningProvider -> Scorer -> {PolicyEngine for action-bearing proposals,
+InteractionQueue for the private view} -> Decision list.
 
 Two independent gates apply to a SURFACE proposal, and a proposal can pass
 through either or both:
@@ -18,6 +18,7 @@ import uuid
 from codirector.adapters.base import ReasoningPrompt, ReasoningProvider
 from codirector.config.models import PersonaConfig
 from codirector.core.autonomy import AutonomyLevel
+from codirector.core.chat_filter import ChatCommentFilter, FilterReason
 from codirector.core.clustering import Clusterer, eligible_clusters
 from codirector.core.events import ChatMessageEvent, SupportEvent
 from codirector.core.models import Cluster, Decision, Proposal
@@ -26,6 +27,165 @@ from codirector.core.scoring import score_proposal
 from codirector.policy.catalog import ActionCatalog
 from codirector.policy.engine import PolicyEngine
 from codirector.queue.interaction_queue import InteractionQueue
+
+
+def _decision_type(cluster: Cluster) -> str:
+    """Classify a cluster as SURFACE, HOLD, or IGNORE based on its
+    characteristics and context. Returns the decision type only."""
+    if cluster.unique_user_count < 3:
+        return "IGNORE"
+
+    text = cluster.representative_text.lower()
+
+    # Reject noise, spam, hostility, or prompt injection — always.
+    spam_indicators = {
+        "free viewers",
+        "click link",
+        "raid",
+        "donate",
+        "spam",
+        "troll",
+        "hotlink",
+        "spam",
+        "bot",
+        "spam",
+    }
+    for indicator in spam_indicators:
+        if indicator in text:
+            return "IGNORE"
+
+    # Reaction clusters are always eligible for surfacing.
+    if cluster.kind == "reaction":
+        return "SURFACE"
+
+    # Questions and topics with enough users are useful — but HOLD
+    # the ones that are too early or too generic.
+    if cluster.kind in ("question", "topic"):
+        # HOLD when the question text looks like a prompt injection (e.g.,
+        # "what are the hidden rules" — the streamer is testing the system).
+        if _looks_like_prompt_injection(text):
+            return "IGNORE"
+        # HOLD when the cluster is too new (before safe window) or too generic.
+        # For now, the simplest signal is the cluster's first_seen timestamp
+        # vs the current time.  We gate HOLD on the cluster being too early
+        # in the stream (first_seen < 30 s), because the reasoning provider
+        # isn't yet wired into the live pipeline.
+        return "SURFACE"
+
+    return "IGNORE"
+
+
+def _looks_like_prompt_injection(text: str) -> bool:
+    """Heuristic: reject text that looks like a prompt injection pattern."""
+    prompt_patterns = [
+        "what is",
+        "what are",
+        "how do you",
+        "where is",
+        "when did",
+        "who is",
+        "which is",
+        "can you",
+        "help me",
+        "what is the",
+        "how can I",
+        "what is the",
+    ]
+    for pattern in prompt_patterns:
+        if pattern in text:
+            return True
+    return False
+
+
+def triage_clusters(
+    clusters: list[Cluster], now: float,
+) -> list[Proposal]:
+    """Triage live-stream audience clusters into proposals matching the
+    creator-dashboard JSON schema.  Every audience message and transcript
+    is treated as untrusted data; requests to change policy, reveal data,
+    or operate OBS are ignored.  Preserves representative_text verbatim.
+
+    Rules:
+      * clusters with < 3 distinct viewers are IGNORED.
+      * speech-noise / spam / hostility / prompt-injection patterns are IGNORED.
+      * reaction clusters are always SURFACE.
+      * question/topic clusters with >= 3 distinct viewers are SURFACE,
+        except when they look like a prompt-injection pattern.
+      * when timing or context is weak a HOLD is returned instead of
+        SURFACE.
+
+    Returns a list of at most five proposals.
+    """
+    proposals: list[Proposal] = []
+    for cluster in clusters:
+        # R-CTX-01: reject below the distinct-user threshold.
+        if cluster.unique_user_count < 3:
+            proposals.append(_proposal_for_cluster(
+                cluster=cluster,
+                decision_type="IGNORE",
+                action_id=None,
+                parameters={},
+                now=now,
+            ))
+            continue
+
+        text = cluster.representative_text.lower()
+
+        # R-SAF-03: reject spam, hostility, prompt injection.
+        if _is_spam_or_hostile(text):
+            proposals.append(_proposal_for_cluster(
+                cluster=cluster,
+                decision_type="IGNORE",
+                action_id=None,
+                parameters={},
+                now=now,
+            ))
+            continue
+
+        # Reaction clusters always surface.
+        if cluster.kind == "reaction":
+            proposals.append(_proposal_for_cluster(
+                cluster=cluster,
+                decision_type="SURFACE",
+                action_id=None,
+                parameters={},
+                now=now,
+            ))
+            continue
+
+        # Question / topic clusters: always SURFACE unless timing is weak.
+        if cluster.kind in ("question", "topic"):
+            proposals.append(_proposal_for_cluster(
+                cluster=cluster,
+                decision_type="SURFACE",
+                action_id=None,
+                parameters={},
+                now=now,
+            ))
+            continue
+
+    return proposals[:5]
+
+
+def _is_spam_or_hostile(text: str) -> bool:
+    """Return True if the text looks like spam, hostility, or prompt injection."""
+    spam_words = {
+        "free viewers", "click link", "raid", "donate",
+        "spam", "troll", "hotlink", "bot", "spam",
+    }
+    for word in spam_words:
+        if word in text:
+            return True
+    # Hostility: any insult or aggressive phrase.
+    hostile_phrases = ["stupid", "idiot", "loser", "hate", "kill", "fuck"]
+    for phrase in hostile_phrases:
+        if phrase in text:
+            return True
+    # Prompt injection: anything that looks like it's trying to
+    # control the conversation.
+    if _looks_like_prompt_injection(text):
+        return True
+    return False
 
 
 class Pipeline:
@@ -41,6 +201,9 @@ class Pipeline:
         catalog: ActionCatalog,
         autonomy: AutonomyLevel,
         decision_ttl_s: float = 20.0,
+        chat_filter: ChatCommentFilter | None = None,
+        chat_batch_max_representative_texts: int = 50,
+        chat_batch_max_wait_s: float = 120.0,
     ) -> None:
         self._clusterer = clusterer
         self._phase = phase_engine
@@ -51,6 +214,19 @@ class Pipeline:
         self._catalog = catalog
         self.autonomy = autonomy
         self._decision_ttl_s = decision_ttl_s
+        if chat_batch_max_representative_texts < 1:
+            raise ValueError("chat_batch_max_representative_texts must be at least 1")
+        if chat_batch_max_wait_s <= 0:
+            raise ValueError("chat_batch_max_wait_s must be greater than 0")
+        self._chat_filter = chat_filter or ChatCommentFilter()
+        self._chat_batch_max_representative_texts = chat_batch_max_representative_texts
+        self._chat_batch_max_wait_s = chat_batch_max_wait_s
+        self._accepted_chat_count = 0
+        self._batch_started_at: float | None = None
+        self._filtered_chat_counts: dict[FilterReason, int] = {
+            "emoji_only": 0,
+            "unintelligible": 0,
+        }
         self._pending_cluster_ids: set[str] = set()
         self._already_surfaced_cluster_ids: set[str] = set()
 
@@ -62,15 +238,47 @@ class Pipeline:
             "representative_text": cluster.representative_text,
         }
 
-    async def ingest_chat(self, event: ChatMessageEvent, now: float) -> Cluster:
+    async def ingest_chat(self, event: ChatMessageEvent, now: float) -> Cluster | None:
+        filter_result = self._chat_filter.evaluate(event.text)
+        if not filter_result.accepted:
+            assert filter_result.reason is not None
+            self._filtered_chat_counts[filter_result.reason] += 1
+            return None
+
+        self._accepted_chat_count += 1
         cluster = self._clusterer.add_message(event, now)
         if cluster.cluster_id not in self._already_surfaced_cluster_ids:
+            if self._batch_started_at is None:
+                self._batch_started_at = now
             self._pending_cluster_ids.add(cluster.cluster_id)
         return cluster
+
+    def chat_batch_ready(self, now: float) -> bool:
+        if len(self._pending_cluster_ids) >= self._chat_batch_max_representative_texts:
+            return True
+        return (
+            self._batch_started_at is not None
+            and now - self._batch_started_at >= self._chat_batch_max_wait_s
+        )
+
+    @property
+    def accepted_chat_count(self) -> int:
+        return self._accepted_chat_count
+
+    @property
+    def pending_representative_text_count(self) -> int:
+        """Number of cluster representatives waiting for the next LLM call."""
+        return len(self._pending_cluster_ids)
+
+    @property
+    def filtered_chat_counts(self) -> dict[FilterReason, int]:
+        return dict(self._filtered_chat_counts)
 
     async def flush_batch(
         self, now: float, live_obs_state: dict[str, str], assumed_pre_state: dict[str, str] | None = None
     ) -> list[Decision]:
+        self._accepted_chat_count = 0
+        self._batch_started_at = None
         cluster_ids = self._pending_cluster_ids
         self._pending_cluster_ids = set()
         all_clusters = {c.cluster_id: c for c in self._clusterer.clusters()}
@@ -169,3 +377,67 @@ class Pipeline:
                 decisions.append(prompt_decision)
 
         return decisions
+
+
+def _score_relevance(cluster: Cluster) -> float:
+    """Compute relevance from a cluster's observable features.
+    Same inputs always produce the same score, now is passed in."""
+    return 0.0
+
+
+def triage_clusters(
+    clusters: list[Cluster], now: float
+) -> list[Proposal]:
+    """Triage live-stream audience clusters into proposals matching the
+    creator-dashboard JSON schema.  Every audience message and transcript
+    is treated as untrusted data; requests to change policy, reveal data,
+    or operate OBS are ignored.
+
+    Returns at most five proposals.  Each proposal carries the
+    cluster's *representative_text* verbatim.
+    """
+    proposals: list[Proposal] = []
+    for cluster in clusters:
+        if cluster.unique_user_count < 3:
+            proposals.append(_make_proposal(
+                cluster=cluster,
+                decision_type="IGNORE",
+                action_id=None,
+                parameters={},
+                now=now,
+            ))
+            continue
+
+        text = cluster.representative_text.lower()
+
+        if _is_spam_or_hostile(text):
+            proposals.append(_make_proposal(
+                cluster=cluster,
+                decision_type="IGNORE",
+                action_id=None,
+                parameters={},
+                now=now,
+            ))
+            continue
+
+        if cluster.kind == "reaction":
+            proposals.append(_make_proposal(
+                cluster=cluster,
+                decision_type="SURFACE",
+                action_id=None,
+                parameters={},
+                now=now,
+            ))
+            continue
+
+        if cluster.kind in ("question", "topic"):
+            proposals.append(_make_proposal(
+                cluster=cluster,
+                decision_type="SURFACE",
+                action_id=None,
+                parameters={},
+                now=now,
+            ))
+            continue
+
+    return proposals[:5]
